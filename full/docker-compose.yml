@@ -1,0 +1,14 @@
+version: '3.2'
+
+services:
+  db:
+    image: postgres:9.5
+    ports:
+      - "6432:5432"
+    volumes:
+      - ./data/postgresdatabase/db/data:/var/lib/postgresql/data
+      - ./data/postgresdatabase/archive:/archive
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=pguser
