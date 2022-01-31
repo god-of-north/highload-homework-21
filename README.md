@@ -60,29 +60,6 @@ Test
 > echo \d | docker exec -i incremental_postgres-source-db_1 psql -U dbadmin db
 ```
 
-## Differential
-
-
-pg_basebackup 
-archive_command = 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f'
-restore_command = 'cp /mnt/server/archivedir/%f %p' 
-
-
-> type populate_db_part1.sql | docker exec -i differential_db_1 psql -U dbadmin postgres
-wait...
-> type populate_db_part2.sql | docker exec -i differential_db_1 psql -U dbadmin postgres
-
-
-> echo \d | docker exec -i differential_db_1 psql -U dbadmin postgres
-
-
-rm -rf /var/lib/postgresql/data/pg_xlog/*
-recovery.conf
-restore_command = 'cp /archive/%f %p'\n
-# recovery_end_command = 'rm -fr barman_wal'
-recovery_target_time = '2022-01-30 13:57:00'
-
-
 ## Reverse Delta
 
 Based on https://github.com/stephane-klein/playground-postgresql-walg
@@ -99,16 +76,38 @@ docker-compose up -d postgres1 s3
 
 ## CDP
 
+Used tool cdpfgl: https://github.com/dupgit/sauvegarde
 
+```
+hid   | ----------                                   -----------
+to    | | client |  <------------------------------> | server |
+user  | ----------                                   -----------
+                                                          ^
+user                  -----------                         |
+client                | restore | <-----------------------|
+(GUI ?)               -----------
+\                                       /            \          /
+ ----- Client side (on a notebook) -----              - server -
+                                                         side
+```
+
+cdpfglclient config for PostgreSQL to backup only database.
+```
+[Client]
+directory-list=/var/lib/postgresql/data
+```
+
+Restore
+```
+rm -rf /var/lib/postgresql/data/*
+cdpfglrestore --restore="^/var/lib/postgresql/data/(.*)$" --date="2022-10-31 13:03:00" --parents --where="/var/lib/postgresql/data/"
+```
 
 ## Comparision table
-
-size - depends on retention policy
 
 | type          | size | ability to roll back at specific time point | speed of roll back | cost |
 |---------------|------|---------------------------------------------|--------------------|------|
 | Full          | 118MB|                   -                         |            57sec   |      |
 | Incremental   |1.46GB|                   +                         |            41sec   |      |
-| Differential  |      |                                             |                    |      |
 | Reverse Delta | 189MB|                   +                         |            56sec   |      |
-| CDP           |      |                                             |                    |      |
+| CDP           | 179MB|                   +                         |            44sec   |      |
